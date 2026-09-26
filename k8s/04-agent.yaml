@@ -1,0 +1,32 @@
+# Maps to: the real Cyera Privacy Agent container
+# (contairium.privacy.cyera.io/rm-agent), deployed inside the customer's
+# own environment. In production, CONTROL_PLANE_URL would point at Cyera's
+# real platform endpoint, and AGENT_API_KEY would come from a proper
+# credentials manager (Vault, AWS Secrets Manager, etc.) - see
+# CredentialsManagerProvider in Cyera's docs - rather than a plain k8s Secret.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cyera-privacy-agent
+  namespace: cyera-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: cyera-privacy-agent}
+  template:
+    metadata:
+      labels: {app: cyera-privacy-agent}
+    spec:
+      containers:
+        - name: cyera-privacy-agent
+          image: quay.io/rprakashg/cyera-agent:latest
+          imagePullPolicy: Always
+          env:
+            - name: CONTROL_PLANE_URL
+              value: http://control-plane:8080
+            - name: CONNECTOR_URL
+              value: http://connector:8080
+            - name: AGENT_API_KEY
+              valueFrom: {secretKeyRef: {name: agent-api-key, key: AGENT_API_KEY}}
+            - name: POLL_INTERVAL_SECONDS
+              value: "5"

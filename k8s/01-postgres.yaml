@@ -1,0 +1,82 @@
+# The internal system: Meridian Grid Co.'s legacy on-prem contractor/HR DB.
+# Represents the kind of datastore that's out of reach for agentless SaaS
+# scanners and is exactly why the Privacy Agent deployment model exists.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  namespace: cyera-demo
+type: Opaque
+stringData:
+  POSTGRES_DB: meridian_hr
+  POSTGRES_USER: meridian
+  POSTGRES_PASSWORD: meridian
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: cyera-demo
+data:
+  init.sql: |
+    CREATE TABLE contractor_pii (
+        id              SERIAL PRIMARY KEY,
+        full_name       TEXT NOT NULL,
+        email           TEXT NOT NULL,
+        phone           TEXT,
+        employer        TEXT,
+        role            TEXT,
+        badge_id        TEXT,
+        substation_access TEXT,
+        cert_expiry     DATE,
+        ssn_last4       TEXT,
+        created_at      TIMESTAMP DEFAULT now()
+    );
+
+    INSERT INTO contractor_pii
+        (full_name, email, phone, employer, role, badge_id, substation_access, cert_expiry, ssn_last4)
+    VALUES
+        ('Jordan Alvarez', 'jordan.alvarez@fieldpartner.com', '555-0142',
+         'Fieldpartner Services LLC', 'Protection Relay Technician', 'BADGE-7841',
+         'Substation-14, Substation-22', '2027-03-01', '4821'),
+        ('Priya Natarajan', 'priya.n@gridtech-contracting.com', '555-0198',
+         'GridTech Contracting', 'Field Engineer', 'BADGE-5502',
+         'Substation-09', '2026-11-15', '3390'),
+        ('Marcus Webb', 'marcus.webb@fieldpartner.com', '555-0177',
+         'Fieldpartner Services LLC', 'Line Crew Supervisor', 'BADGE-6690',
+         'Substation-03, Substation-14, Substation-30', '2027-06-20', '9012');
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: cyera-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: postgres}
+  template:
+    metadata:
+      labels: {app: postgres}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports: [{containerPort: 5432}]
+          envFrom:
+            - secretRef: {name: postgres-credentials}
+          volumeMounts:
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init-script
+          configMap: {name: postgres-init}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: cyera-demo
+spec:
+  selector: {app: postgres}
+  ports: [{port: 5432, targetPort: 5432}]
