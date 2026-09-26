@@ -96,7 +96,7 @@ make deploy-workloads
 
 # 3. Run the live demo: submits a DSAR, watches the agent process it,
 #    shows before/after state of the internal DB
-make run
+./run-demo.sh
 ```
 
 ## What happens when demo runs
