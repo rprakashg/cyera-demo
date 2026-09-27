@@ -74,3 +74,5 @@ cleanup:
 	kubectl delete -f k8s/01-postgres.yaml
 	kubectl delete -f k8s/00-namespace.yaml
 	
+	echo "Tearing down EKS cluster"
+	terraform -chdir=./tf destroy -auto-approve
